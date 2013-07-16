@@ -10,15 +10,31 @@ if File.readable?(config_path)
 end
 
 unless config["main_db_path"]
-  print "please type path/to/main.db: "
-  path = File.expand_path($stdin.gets.strip.gsub(/\\ /, "\ "))
+  path = nil
+  files = Dir["#{ENV['HOME']}/Library/Application Support/Skype/*/main.db"].to_a
+  unless files.empty?
+    files.each.with_index do |file, idx|
+      puts "%2d %s" % [idx + 1, file]
+    end
+    puts "%2d %s" % [files.length + 1, "Other"]
+    puts "Choose path: "
+    idx = $stdin.gets.to_i - 1
+    if idx < files.length
+      path = files[idx]
+    end
+  end
+
+  unless path
+    print "please type path/to/main.db: "
+    path = File.expand_path($stdin.gets.strip.gsub(/\\ /, "\ "))
+  end
+
   raise "Failed to read #{path.inspect}" unless File.readable?(path)
   config = {"main_db_path" => path}
   open(config_path, "w") do |f|
     f.puts(YAML.dump(config))
   end
 end
-
 
 $LOAD_PATH << File.expand_path("../../lib", __FILE__)
 require 'skygrepe'
