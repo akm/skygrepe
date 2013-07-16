@@ -8,9 +8,9 @@ Gem::Specification.new do |spec|
   spec.version       = Skygrepe::VERSION
   spec.authors       = ["akima"]
   spec.email         = ["akm2000@gmail.com"]
-  spec.description   = %q{TODO: Write a gem description}
-  spec.summary       = %q{TODO: Write a gem summary}
-  spec.homepage      = ""
+  spec.description   = %q{skygrepe is to grep keyword}
+  spec.summary       = %q{skygrepe is to grep keyword}
+  spec.homepage      = "https://github.com/akm/skygrepe"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files`.split($/)
