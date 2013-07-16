@@ -1,9 +1,29 @@
 #!/usr/bin/env ruby
 # encoding: utf-8
+require 'yaml'
+
+config = {}
+
+config_path = File.join(ENV['HOME'], ".skygrepe")
+if File.readable?(config_path)
+  config = YAML.load_file(config_path)
+end
+
+unless config["main_db_path"]
+  print "please type path/to/main.db: "
+  path = File.expand_path($stdin.gets.strip.gsub(/\\ /, "\ "))
+  raise "Failed to read #{path.inspect}" unless File.readable?(path)
+  config = {"main_db_path" => path}
+  open(config_path, "w") do |f|
+    f.puts(YAML.dump(config))
+  end
+end
+
 
 $LOAD_PATH << File.expand_path("../../lib", __FILE__)
 require 'skygrepe'
 
-Skygrepe.grep(ARGV.first).each do |line|
+db = Skygrepe::Database.new(config["main_db_path"])
+db.grep(ARGV.first).each do |line|
   puts line.join("|")
 end
