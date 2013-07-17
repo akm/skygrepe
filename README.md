@@ -1,29 +1,41 @@
-# Skygrepe
+# skygrepe
 
-TODO: Write a gem description
+Skype had /search command to search over multi conversations. But it have gone away.
+We need other tools. skygrepe is one of them.
 
 ## Installation
 
-Add this line to your application's Gemfile:
-
-    gem 'skygrepe'
-
-And then execute:
-
-    $ bundle
-
-Or install it yourself as:
-
     $ gem install skygrepe
+
+If you use rbenv, you should run
+
+    $ rbenv rehash
 
 ## Usage
 
-TODO: Write usage instructions here
+    $ skygrepe KEYWORD
 
-## Contributing
+### First time
 
-1. Fork it
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create new Pull Request
+Before searching, skygrepe require path to database of Skype.
+
+```
+$ skygrepe fooobar
+ 1 /Users/akima/Library/Application Support/Skype/takeshi_akima/main.db
+ 2 Other
+Choose path: 
+```
+
+Enter the number of skype path. If you choose "Other",
+
+```
+please type path/to/main.db: 
+```
+
+
+## Uninstall
+
+```
+$ gem uninstall skygrepe
+$ rm $HOME/.skygrepe
+```
