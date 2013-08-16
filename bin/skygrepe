@@ -11,7 +11,10 @@ end
 
 unless config["main_db_path"]
   path = nil
-  files = Dir["#{ENV['HOME']}/Library/Application Support/Skype/*/main.db"].to_a
+  files = [
+    Dir["#{ENV['HOME']}/Library/Application Support/Skype/*/main.db"],
+    Dir["#{ENV['HOME']}/.Skype/*/main.db"]
+  ].flatten
   unless files.empty?
     files.each.with_index do |file, idx|
       puts "%2d %s" % [idx + 1, file]
