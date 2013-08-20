@@ -41,7 +41,16 @@ require 'skygrepe'
 
 c =Skygrepe::Context.new(ARGV.first, config)
 while !c.quit?
-  c.run.each do |line|
+  rows = c.run
+  rows.each do |line|
     puts line.join("|")
+  end
+  print("command [next|prev|quit] ")
+  if cmd = $stdin.gets
+    case cmd.strip
+    when /\An/ then c.next
+    when /\Ap/ then c.prev
+    when /\Aq/ then c.quit
+    end
   end
 end

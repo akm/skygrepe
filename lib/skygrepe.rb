@@ -24,12 +24,26 @@ module Skygrepe
     end
 
     def run
+      @count ||= db.execute(@condition.count_sql).flatten.first.to_i
       formatter = Formatter.new({"time_format" => @config["time_format"]})
-      options = { limit: @limit, offset: @offset }
-      sql = @condition.grep_sql(options)
+      sql = @condition.grep_sql(@limit, @offset)
       rows = db.execute(sql).map{|row| formatter.format(row) }
-      @quit = true
+      if @count <= @limit
+        @quit = true
+      end
       rows
+    end
+
+    def next(page = 1)
+      @offset += (@limit * page)
+    end
+
+    def prev(page = 1)
+      self.next( -1 * page)
+    end
+
+    def quit
+      @quit = true
     end
   end
 
@@ -38,15 +52,18 @@ module Skygrepe
       @keyword = keyword
     end
 
-    def grep_sql(options = {})
-      options = {
-        limit: 30,
-        offset: 0,
-      }
+    def grep_sql(limit, offset)
       sql = "SELECT m.id, m.timestamp, c.displayname, m.author, substr(m.body_xml, 1, 50) FROM Messages as m inner join Conversations as c on m.convo_id = c.id"
       sql << " WHERE body_xml like '%#{@keyword}%'"
       sql << " ORDER BY m.timestamp"
-      sql << " LIMIT #{options[:limit]} OFFSET #{options[:offset]}"
+      sql << " LIMIT #{limit} OFFSET #{offset}"
+      sql << ';'
+    end
+
+
+    def count_sql
+      sql = "SELECT count(*) FROM Messages"
+      sql << " WHERE body_xml like '%#{@keyword}%'"
       sql << ';'
     end
   end
