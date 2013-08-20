@@ -1,5 +1,6 @@
 require "skygrepe/version"
 require "sqlite3"
+require 'cgi/util'
 
 require "time"
 
@@ -103,12 +104,13 @@ module Skygrepe
 
     def list(row)
       row[1] = Time.at(row[1]).strftime(@time_format)
-      row[4] = (row[4] || '').gsub(/[\n\r]/m, '')
+      row[4] = CGI.unescape_html(row[4] || '').gsub(/[\n\r]/m, '')
       row
     end
 
     def detail(row)
       row[1] = Time.at(row[1]).strftime(@time_format)
+      row[4] = CGI.unescape_html(row[4] || '')
       row
     end
   end
