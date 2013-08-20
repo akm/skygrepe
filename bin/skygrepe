@@ -45,6 +45,7 @@ while !c.quit?
   rows.each do |line|
     puts line.join("|")
   end
+  break if c.count <= c.limit
   print("command [next|prev|quit] ")
   if cmd = $stdin.gets
     case cmd.strip

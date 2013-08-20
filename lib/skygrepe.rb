@@ -6,6 +6,8 @@ require "time"
 module Skygrepe
 
   class Context
+    attr_reader :count, :limit
+
     def initialize(keyword, config)
       raise ArgumentError, "keyword is empty" if keyword.nil? || keyword.empty?
       @config = config
