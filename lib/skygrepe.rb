@@ -6,7 +6,7 @@ require "time"
 module Skygrepe
 
   class Context
-    attr_reader :count, :limit
+    attr_reader :count, :limit, :current_id
 
     def initialize(keyword, config)
       raise ArgumentError, "keyword is empty" if keyword.nil? || keyword.empty?
@@ -15,6 +15,7 @@ module Skygrepe
       @offset = 0
       @limit = 30
       @quit = false
+      @current_id = nil
     end
 
     def quit?
@@ -25,23 +26,48 @@ module Skygrepe
       @db ||= SQLite3::Database.new(@config["main_db_path"])
     end
 
+    def formatter
+      @formatter ||= Formatter.new({"time_format" => @config["time_format"]})
+    end
+
     def run
       @count ||= db.execute(@condition.count_sql).flatten.first.to_i
-      formatter = Formatter.new({"time_format" => @config["time_format"]})
       sql = @condition.grep_sql(@limit, @offset)
-      rows = db.execute(sql).map{|row| formatter.format(row) }
+      rows = db.execute(sql).map{|row| formatter.list(row) }
+      unless rows.empty?
+        @current_id = rows.first.first.to_i
+      end
       if @count <= @limit
         @quit = true
       end
       rows
     end
 
-    def next(page = 1)
+    def next_page(page = 1)
       @offset += (@limit * page)
     end
 
-    def prev(page = 1)
-      self.next( -1 * page)
+    def prev_page(page = 1)
+      self.next_page( -1 * page)
+    end
+
+    def detail(id)
+      sql = "SELECT m.id, m.timestamp, c.displayname, m.author, m.body_xml FROM Messages as m inner join Conversations as c on m.convo_id = c.id"
+      sql << " WHERE m.id = #{id}"
+      if d = db.execute(sql).first
+        @current_id = d.first.to_i
+        formatter.detail(d)
+      else
+        nil
+      end
+    end
+
+    def next_detail(d = 1)
+      detail(@current_id + d)
+    end
+
+    def prev_detail(d = 1)
+      self.next_detail( -1 * d)
     end
 
     def quit
@@ -75,9 +101,14 @@ module Skygrepe
       @time_format = config["time_format"] || "%Y-%m-%d %H:%M"
     end
 
-    def format(row)
+    def list(row)
       row[1] = Time.at(row[1]).strftime(@time_format)
       row[4] = (row[4] || '').gsub(/[\n\r]/m, '')
+      row
+    end
+
+    def detail(row)
+      row[1] = Time.at(row[1]).strftime(@time_format)
       row
     end
   end

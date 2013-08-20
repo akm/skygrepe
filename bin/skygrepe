@@ -39,6 +39,17 @@ end
 $LOAD_PATH << File.expand_path("../../lib", __FILE__)
 require 'skygrepe'
 
+require "highline/system_extensions"
+
+def get_char_without_enter
+  HighLine::SystemExtensions.raw_no_echo_mode
+  begin
+    HighLine::SystemExtensions.get_character
+  ensure
+    HighLine::SystemExtensions.restore_mode
+  end
+end
+
 c =Skygrepe::Context.new(ARGV.first, config)
 while !c.quit?
   rows = c.run
@@ -46,12 +57,44 @@ while !c.quit?
     puts line.join("|")
   end
   break if c.count <= c.limit
-  print("command [next|prev|quit] ")
-  if cmd = $stdin.gets
-    case cmd.strip
-    when /\An/ then c.next
-    when /\Ap/ then c.prev
-    when /\Aq/ then c.quit
+
+  while true
+    print("command (h)elp: ")
+
+    if cmd = get_char_without_enter # $stdin.getc
+      cmd = cmd.chr
+      print("\r")
+      case cmd
+      when /\Ah/ then
+        puts "(N)ext page or <SPACE>: next page of list"
+        puts "(P)rev page: previous page of list"
+        puts "(s)how: specify message id"
+        puts "(d)etail: show message"
+        puts "(n)ext: show next message"
+        puts "(p)rev: show previous message"
+        puts "(q)uit: quit"
+      when " " then c.next_page; break
+      when /\AN/ then c.next_page; break
+      when /\AP/ then c.prev_page; break
+      when /\Aq/ then c.quit; break
+      when /\As/ then
+        print(" " * 20)
+        print("\r")
+        print("type message id: ")
+        id = $stdin.gets
+        d = c.detail(id)
+        puts d.join("|")
+      when /\Ad/ then
+        d = c.detail(c.current_id)
+        puts d.join("|")
+      when /\An/ then
+        d = c.next_detail
+        puts d.join("|")
+      when /\Ap/ then
+        d = c.prev_detail
+        puts d.join("|")
+      end
     end
   end
+
 end
