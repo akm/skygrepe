@@ -39,9 +39,9 @@ end
 $LOAD_PATH << File.expand_path("../../lib", __FILE__)
 require 'skygrepe'
 
-c =Skygrepe::Context.new(config)
+c =Skygrepe::Context.new(ARGV.first, config)
 while !c.quit?
-  c.run(ARGV.first).each do |line|
+  c.run.each do |line|
     puts line.join("|")
   end
 end

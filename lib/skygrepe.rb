@@ -6,8 +6,10 @@ require "time"
 module Skygrepe
 
   class Context
-    def initialize(config)
+    def initialize(keyword, config)
+      raise ArgumentError, "keyword is empty" if keyword.nil? || keyword.empty?
       @config = config
+      @condition = Condition.new(keyword)
       @offset = 0
       @limit = 30
       @quit = false
@@ -17,31 +19,35 @@ module Skygrepe
       @quit
     end
 
-    def run(keyword)
-      db = Database.new(@config["main_db_path"])
+    def db
+      @db ||= SQLite3::Database.new(@config["main_db_path"])
+    end
+
+    def run
       formatter = Formatter.new({"time_format" => @config["time_format"]})
       options = { limit: @limit, offset: @offset }
-      db.grep(keyword, options).map{|row| formatter.format(row) }
+      sql = @condition.grep_sql(options)
+      rows = db.execute(sql).map{|row| formatter.format(row) }
+      @quit = true
+      rows
     end
   end
 
-  class Database
-    def initialize(path)
-      @impl ||= SQLite3::Database.new(path)
+  class Condition
+    def initialize(keyword)
+      @keyword = keyword
     end
 
-    def grep(keyword, options = {})
-      raise ArgumentError, "keyword is empty" if keyword.nil? || keyword.empty?
+    def grep_sql(options = {})
       options = {
         limit: 30,
         offset: 0,
       }
       sql = "SELECT m.id, m.timestamp, c.displayname, m.author, substr(m.body_xml, 1, 50) FROM Messages as m inner join Conversations as c on m.convo_id = c.id"
-      sql << " WHERE body_xml like '%#{keyword}%'"
+      sql << " WHERE body_xml like '%#{@keyword}%'"
       sql << " ORDER BY m.timestamp"
       sql << " LIMIT #{options[:limit]} OFFSET #{options[:offset]}"
       sql << ';'
-      @impl.execute(sql)
     end
   end
 
