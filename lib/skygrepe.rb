@@ -1,7 +1,19 @@
 require "skygrepe/version"
 require "sqlite3"
 
-module Skygrepe
+require "time"
+
+class Skygrepe
+
+  def initialize(config)
+    @config = config
+  end
+
+  def run(keyword)
+    db = Database.new(@config["main_db_path"])
+    formatter = Formatter.new({"time_format" => @config["time_format"]})
+    db.grep(keyword).map{|row| formatter.format(row) }
+  end
 
   class Database
     def initialize(path)
@@ -9,8 +21,21 @@ module Skygrepe
     end
 
     def grep(keyword)
-      sql = "SELECT m.timestamp, c.displayname, m.author, m.body_xml FROM Messages as m inner join Conversations as c on m.convo_id = c.id  WHERE body_xml like '%#{keyword}%';"
-      rows = @impl.execute(sql)
+      raise ArgumentError, "keyword is empty" if keyword.nil? || keyword.empty?
+      sql = "SELECT m.id, m.timestamp, c.displayname, m.author, substr(m.body_xml, 1, 50) FROM Messages as m inner join Conversations as c on m.convo_id = c.id  WHERE body_xml like '%#{keyword}%';"
+      @impl.execute(sql)
+    end
+  end
+
+  class Formatter
+    def initialize(config)
+      @time_format = config["time_format"] || "%Y-%m-%d %H:%M"
+    end
+
+    def format(row)
+      row[1] = Time.at(row[1]).strftime(@time_format)
+      row[4] = (row[4] || '').gsub(/[\n\r]/m, '')
+      row
     end
   end
 end

@@ -39,7 +39,6 @@ end
 $LOAD_PATH << File.expand_path("../../lib", __FILE__)
 require 'skygrepe'
 
-db = Skygrepe::Database.new(config["main_db_path"])
-db.grep(ARGV.first).each do |line|
+Skygrepe.new(config).run(ARGV.first).each do |line|
   puts line.join("|")
 end
