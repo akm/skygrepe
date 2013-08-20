@@ -11,8 +11,9 @@ module Skygrepe
 
     def initialize(keyword, config)
       raise ArgumentError, "keyword is empty" if keyword.nil? || keyword.empty?
+      @keyword = keyword
       @config = config
-      @condition = Condition.new(keyword)
+      @condition = Condition.new(@keyword)
       @offset = 0
       @limit = 30
       @quit = false
@@ -28,7 +29,7 @@ module Skygrepe
     end
 
     def formatter
-      @formatter ||= Formatter.new({"time_format" => @config["time_format"]})
+      @formatter ||= Formatter.new(@keyword, {"time_format" => @config["time_format"]})
     end
 
     def run
@@ -98,20 +99,25 @@ module Skygrepe
   end
 
   class Formatter
-    def initialize(config)
+    def initialize(keyword, config)
+      @keyword = keyword
       @time_format = config["time_format"] || "%Y-%m-%d %H:%M"
     end
 
     def list(row)
       row[1] = Time.at(row[1]).strftime(@time_format)
-      row[4] = CGI.unescape_html(row[4] || '').gsub(/[\n\r]/m, '')
+      row[4] = format_message(row[4] || '').gsub(/[\n\r]/m, '')
       row
     end
 
     def detail(row)
       row[1] = Time.at(row[1]).strftime(@time_format)
-      row[4] = CGI.unescape_html(row[4] || '')
+      row[4] = format_message(row[4] || '')
       row
+    end
+
+    def format_message(msg)
+      CGI.unescape_html(msg || '').gsub(/(#{Regexp.escape(@keyword)})/i){ "\e[32m#{$1}\e[0m" }
     end
   end
 end
