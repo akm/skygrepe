@@ -39,9 +39,9 @@ module Skygrepe
       unless rows.empty?
         @current_id = rows.first.first.to_i
       end
-      if @count <= @limit
-        @quit = true
-      end
+      # if @count <= @limit
+      #   @quit = true
+      # end
       rows
     end
 

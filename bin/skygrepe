@@ -53,7 +53,7 @@ while !c.quit?
   rows.each do |line|
     puts line.join("|")
   end
-  break if c.count <= c.limit
+  # break if c.count <= c.limit
 
   while true
     print("command (h)elp: ")
