@@ -2,12 +2,9 @@
 # encoding: utf-8
 require 'yaml'
 
-config = {}
-
 config_path = File.join(ENV['HOME'], ".skygrepe")
-if File.readable?(config_path)
-  config = YAML.load_file(config_path)
-end
+config = File.readable?(config_path) ?
+  YAML.load_file(config_path) : { }
 
 unless config["main_db_path"]
   path = nil
