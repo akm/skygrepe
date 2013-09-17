@@ -4,7 +4,7 @@ require 'yaml'
 
 config_path = File.join(ENV['HOME'], ".skygrepe")
 config = File.readable?(config_path) ?
-  YAML.load_file(config_path) : { }
+YAML.load_file(config_path) : { }
 
 unless config["main_db_path"]
   path = nil
@@ -47,71 +47,234 @@ def get_char_without_enter
   end
 end
 
-c =Skygrepe::Context.new(ARGV.first, config)
-while !c.quit?
-  rows = c.run
-  rows.each do |line|
-    puts line.join("|")
-  end
-  # break if c.count <= c.limit
+module Skygrepe::Interactive
 
-  while true
-    print("command (h)elp: ")
-
-    if cmd = get_char_without_enter # $stdin.getc
-      if cmd == "\r".ord
-        print "\r               \n"
-        next
+  class Command
+    class << self
+      def subclasses
+        @subclasses ||= []
       end
-      cmd = cmd.chr
+
+      def extended(klass)
+        subclasses << klass
+      end
+    end
+
+    attr_reader :console
+    def initialize(console)
+      @console = console
+    end
+
+    def match?(char)
+      patterns.any?{|ptn| ptn === char}
+    end
+
+    # def message ; end
+    # def patterns; end
+    # def run(c)  ; end
+
+    def break_loop
+      @breaked = true
+    end
+    def breaked?
+      @breaked
+    end
+  end
+
+  class NextPage < Command
+    def message ; "(N)ext page or <SPACE>: next page of list"; end
+    def patterns; [/\AN/, " "]; end
+    def run(c)  ; c.next_page ; @context.break_loop; end
+  end
+
+  class PrevPage < Command
+    def message ; "(P)rev page: previous page of list"; end
+    def patterns; [/\AP/, " "]; end
+    def run(c)  ; c.next_page ; @context.break_loop; end
+  end
+
+  class ShowSpecified < Command
+    def message ; "(s)how: specify message id"; end
+    def patterns; [/\As/, " "]; end
+    def run(c)
+      print(" " * 20)
       print("\r")
-      case cmd
-      when /\Ah/ then
-        puts "(N)ext page or <SPACE>: next page of list"
-        puts "(P)rev page: previous page of list"
-        puts "(s)how: specify message id"
-        puts "(d)etail: show message"
-        puts "(n)ext: show next message"
-        puts "(p)rev: show previous message"
-        puts "(q)uit: quit"
-      when " " then c.next_page; break
-      when /\AN/ then c.next_page; break
-      when /\AP/ then c.prev_page; break
-      when /\Aq/ then c.quit; break
-      when /\As/ then
-        print(" " * 20)
-        print("\r")
-        print("type message id: ")
-        id = $stdin.gets
-        d = c.detail(id)
-        unless d
-          puts "no data found for #{id.inspect}"
-          break
-        end
-        puts d.join("|")
-      when /\Ad/ then
-        d = c.detail(c.current_id)
-        unless d
-          puts "No data"
-          break
-        end
-        puts d.join("|")
-      when /\An/ then
-        d = c.next_detail
-        unless d
-          puts "No data"
-          break
-        end
-        puts d.join("|")
-      when /\Ap/ then
-        d = c.prev_detail
-        unless d
-          puts "No data"
-          break
-        end
-        puts d.join("|")
+      print("type message id: ")
+      id = $stdin.gets
+      d = c.detail(id)
+      unless d
+        puts "no data found for #{id.inspect}"
+        @context.break_loop
+      end
+      puts d.join("|")
+    end
+  end
+
+  class Detail < Command
+    def message ; "(d)etail: show message"; end
+    def patterns; [/\Ad/, " "]; end
+    def run(c)
+      d = c.detail(c.current_id)
+      unless d
+        puts "No data"
+        @context.break_loop
+      end
+      puts d.join("|")
+    end
+  end
+
+  class NextMessage < Command
+    def message ; "(n)ext: show next message"; end
+    def patterns; [/\An/, " "]; end
+    def run(c)
+      d = c.next_detail
+      unless d
+        puts "No data"
+        @context.break_loop
+      end
+      puts d.join("|")
+    end
+  end
+
+  class PrevMessage < Command
+    def message ; "(p)rev: show previous message"; end
+    def patterns; [/\Ap/, " "]; end
+    def run(c)
+      d = c.prev_detail
+      unless d
+        puts "No data"
+        @context.break_loop
+      end
+      puts d.join("|")
+    end
+  end
+
+  class Quit < Command
+    def message ; "(q)uit: quit"; end
+    def patterns; [/\AN/, " "]; end
+    def run(c)  ; c.next_page ; @context.break_loop; end
+  end
+
+  class Help < Command
+    def message ; "(h)uit: show this page"; end
+    def patterns; [/\Ah/, " "]; end
+    def run(c)
+      console.commands.each do |k|
+        $stdout.puts k.new.message
       end
     end
   end
 
+
+  class Console
+    attr_reader :commands
+    def initialize(context)
+      @context = context
+      @commands = Command.subclasses.map{|k| k.new(self)}
+    end
+
+    def process
+      while !@context.quit?
+        rows = @context.run
+        rows.each do |line|
+          puts line.join("|")
+        end
+        # @context.break_loop if @context.count <= @context.limit
+        process_command
+      end
+    end
+
+    def process_command
+      while true
+        print("command (h)elp: ")
+
+        if char = get_char_without_enter # $stdin.getc
+          if char == "\r".ord
+            print "\r               \n"
+            next
+          end
+          char = char.chr
+          print("\r")
+          if command = commands.detect{|cmd| cmd.match?(char) }
+            command.run(@context)
+          end
+        end
+      end
+
+    end
+  end
+
 end
+
+
+c = Skygrepe::Context.new(ARGV.first, config)
+Skygrepe::Interactive::Console.new(c)
+
+# c =Skygrepe::Context.new(ARGV.first, config)
+# while !c.quit?
+#   rows = c.run
+#   rows.each do |line|
+#     puts line.join("|")
+#   end
+#   # break if c.count <= c.limit
+
+#   while true
+#     print("command (h)elp: ")
+
+#     if cmd = get_char_without_enter # $stdin.getc
+#       if cmd == "\r".ord
+#         print "\r               \n"
+#         next
+#       end
+#       cmd = cmd.chr
+#       print("\r")
+#       case cmd
+#       when /\Ah/ then
+#         puts "(N)ext page or <SPACE>: next page of list"
+#         puts "(P)rev page: previous page of list"
+#         puts "(s)how: specify message id"
+#         puts "(d)etail: show message"
+#         puts "(n)ext: show next message"
+#         puts "(p)rev: show previous message"
+#         puts "(q)uit: quit"
+#       when " " then c.next_page; break
+#       when /\AN/ then c.next_page; break
+#       when /\AP/ then c.prev_page; break
+#       when /\Aq/ then c.quit; break
+#       when /\As/ then
+#         print(" " * 20)
+#         print("\r")
+#         print("type message id: ")
+#         id = $stdin.gets
+#         d = c.detail(id)
+#         unless d
+#           puts "no data found for #{id.inspect}"
+#           break
+#         end
+#         puts d.join("|")
+#       when /\Ad/ then
+#         d = c.detail(c.current_id)
+#         unless d
+#           puts "No data"
+#           break
+#         end
+#         puts d.join("|")
+#       when /\An/ then
+#         d = c.next_detail
+#         unless d
+#           puts "No data"
+#           break
+#         end
+#         puts d.join("|")
+#       when /\Ap/ then
+#         d = c.prev_detail
+#         unless d
+#           puts "No data"
+#           break
+#         end
+#         puts d.join("|")
+#       end
+#     end
+#   end
+
+# end
